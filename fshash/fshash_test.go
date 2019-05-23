@@ -7,12 +7,6 @@ import (
 	"github.com/bob3000/dupcrawler/fshash"
 )
 
-func assertVal(t *testing.T, got interface{}, want interface{}) {
-	if got != want {
-		t.Errorf("got '%s' want '%s'", got, want)
-	}
-}
-
 func assertMapEqual(t *testing.T, got fshash.Map, want fshash.Map) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got '%s' want '%s'", got, want)
@@ -101,5 +95,37 @@ func TestReadPath(t *testing.T) {
 			"YICafv5TlzimYjDtEdqN2lXFRtg=": []string{"testdata/c/d/d.txt"},
 		}
 		assertMapEqual(t, got, want)
+	})
+}
+
+func BenchmarkReadPath(b *testing.B) {
+	b.Run("benchmark sequential", func(b *testing.B) {
+		args := fshash.ReadPathArgs{
+			// you might want to change FPath to a larger data set for real
+			// benchmarking
+			FPath:       "testdata",
+			FollowLinks: false,
+			CurDepth:    0,
+			MaxDepth:    0,
+			Excludes:    []string{},
+			Parallel:    false,
+			Verbose:     false,
+		}
+		fshash.ReadPath(args)
+	})
+
+	b.Run("benchmark parallel", func(b *testing.B) {
+		args := fshash.ReadPathArgs{
+			// you might want to change FPath to a larger data set for real
+			// benchmarking
+			FPath:       "testdata",
+			FollowLinks: false,
+			CurDepth:    0,
+			MaxDepth:    0,
+			Excludes:    []string{},
+			Parallel:    true,
+			Verbose:     false,
+		}
+		fshash.ReadPath(args)
 	})
 }
