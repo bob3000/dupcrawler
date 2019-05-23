@@ -28,6 +28,28 @@ func TestReadPath(t *testing.T) {
 			CurDepth:    0,
 			MaxDepth:    0,
 			Excludes:    []string{},
+			Parallel:    false,
+			Verbose:     false,
+		}
+		got := fshash.ReadPath(args)
+		want := map[string][]string{
+			"68EedPgEqj52eHjjZa2A0OBFQm8=": []string{
+				"testdata/a/a.txt", "testdata/c/d/a.txt", "testdata/b/a.txt"},
+			"LSuQi2CqnyqcwBxqNkbkyumeibI=": []string{"testdata/b/b.txt"},
+			"TTmnAadUv+7LU2O2oAq7FGX/+co=": []string{"testdata/c/c.txt"},
+			"YICafv5TlzimYjDtEdqN2lXFRtg=": []string{"testdata/c/d/d.txt"},
+		}
+		assertMapEqual(t, got, want)
+	})
+
+	t.Run("Read path in parallel", func(t *testing.T) {
+		args := fshash.ReadPathArgs{
+			FPath:       "testdata",
+			FollowLinks: false,
+			CurDepth:    0,
+			MaxDepth:    0,
+			Excludes:    []string{},
+			Parallel:    true,
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
@@ -48,6 +70,7 @@ func TestReadPath(t *testing.T) {
 			CurDepth:    0,
 			MaxDepth:    3,
 			Excludes:    []string{},
+			Parallel:    false,
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
@@ -67,6 +90,7 @@ func TestReadPath(t *testing.T) {
 			CurDepth:    0,
 			MaxDepth:    0,
 			Excludes:    []string{"testdata/b"},
+			Parallel:    false,
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)

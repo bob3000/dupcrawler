@@ -8,7 +8,9 @@ import (
 	"log"
 	"os"
 	"path"
+	"sort"
 	"strings"
+	"sync"
 )
 
 const chunkSizeKB = 256
@@ -20,10 +22,12 @@ type ReadPathArgs struct {
 	FPath       string
 	FollowLinks bool
 	MaxDepth    int
+	Parallel    bool
 	Verbose     bool
 }
 
-func readPath(a ReadPathArgs, fm *map[string][]string) {
+func readPath(a ReadPathArgs, fm *map[string][]string, wg *sync.WaitGroup,
+	mtx *sync.Mutex) {
 	// return early because of constraints?
 	if a.MaxDepth > 0 && a.CurDepth >= a.MaxDepth {
 		return
@@ -48,14 +52,24 @@ func readPath(a ReadPathArgs, fm *map[string][]string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		readPath(args, fm)
+		if a.Parallel {
+			wg.Add(1)
+			go readPath(args, fm, wg, mtx)
+		} else {
+			readPath(args, fm, wg, mtx)
+		}
 		return
 	}
 	f, err := os.Open(a.FPath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
+	defer func() {
+		f.Close()
+		if a.Parallel {
+			wg.Done()
+		}
+	}()
 
 	// if it's a directory, call func recursively
 	if fstat.IsDir() {
@@ -70,7 +84,12 @@ func readPath(a ReadPathArgs, fm *map[string][]string) {
 			args := a
 			args.FPath = path.Join(a.FPath, f)
 			args.CurDepth = a.CurDepth + 1
-			readPath(args, fm)
+			if a.Parallel {
+				wg.Add(1)
+				go readPath(args, fm, wg, mtx)
+			} else {
+				readPath(args, fm, wg, mtx)
+			}
 		}
 		return
 	}
@@ -91,13 +110,28 @@ func readPath(a ReadPathArgs, fm *map[string][]string) {
 		hash = sha1.Sum(hashComponents)
 		hashStr = base64.StdEncoding.EncodeToString(hash[:])
 	}
-	(*fm)[hashStr] = append((*fm)[hashStr], a.FPath)
+	if a.Parallel {
+		mtx.Lock()
+		(*fm)[hashStr] = append((*fm)[hashStr], a.FPath)
+		mtx.Unlock()
+	} else {
+		(*fm)[hashStr] = append((*fm)[hashStr], a.FPath)
+	}
 }
 
 // ReadPath crawls the file system from a specified path and creates a mapping
 // SHA1 hashes to file paths
 func ReadPath(args ReadPathArgs) map[string][]string {
 	var fileHashes = make(map[string][]string)
-	readPath(args, &fileHashes)
+	if args.Parallel {
+		var wg sync.WaitGroup
+		var mtx = sync.Mutex{}
+		wg.Add(1)
+		readPath(args, &fileHashes, &wg, &mtx)
+		wg.Wait()
+	} else {
+		readPath(args, &fileHashes, nil, nil)
+	}
+	sort.Sort(fileHashes)
 	return fileHashes
 }

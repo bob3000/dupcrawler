@@ -39,11 +39,12 @@ Options:
 	isVerbose := arguments["--verbose"].(bool)
 
 	rArgs := fshash.ReadPathArgs{
+		CurDepth:    0,
+		Excludes:    excludes,
 		FPath:       path.Clean(arguments["<inputdir>"].(string)),
 		FollowLinks: arguments["--symlinks"].(bool),
-		CurDepth:    0,
 		MaxDepth:    maxDepth,
-		Excludes:    excludes,
+		Parallel:    true,
 		Verbose:     isVerbose,
 	}
 
