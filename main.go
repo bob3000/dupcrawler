@@ -27,6 +27,7 @@ Options:
   -l, --symlinks          Follow symlinks
   -h --help               Show this screen
   -v, --verbose           Show whats being done
+  --no-parallel			  Disable parallel directory processing
   --version               Show version`
 
 	arguments, _ := docopt.ParseArgs(usage, os.Args[1:], VERSION)
@@ -47,7 +48,7 @@ Options:
 			FPath:       cleanPath,
 			FollowLinks: arguments["--symlinks"].(bool),
 			MaxDepth:    maxDepth,
-			Parallel:    true,
+			Parallel:    !arguments["--no-parallel"].(bool),
 			Verbose:     isVerbose,
 		}
 		fileHashes := fshash.ReadPath(rArgs)
