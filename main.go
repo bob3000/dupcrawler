@@ -19,7 +19,7 @@ func main() {
 	usage := `dupcrawler - looking for duplicate files
 
 Usage:
-  dupcrawler [options] <inputdir>
+  dupcrawler [options] <inputdir>...
 
 Options:
   -e, --excludes=<paths>  Comma separated list of path to exclude [default: ""]
@@ -37,22 +37,29 @@ Options:
 	}
 	excludes := strings.Split(arguments["--excludes"].(string), ",")
 	isVerbose := arguments["--verbose"].(bool)
-
-	rArgs := fshash.ReadPathArgs{
-		CurDepth:    0,
-		Excludes:    excludes,
-		FPath:       path.Clean(arguments["<inputdir>"].(string)),
-		FollowLinks: arguments["--symlinks"].(bool),
-		MaxDepth:    maxDepth,
-		Parallel:    true,
-		Verbose:     isVerbose,
+	inputPaths := arguments["<inputdir>"].([]string)
+	globalHashMap := make(fshash.Map)
+	for _, p := range inputPaths {
+		cleanPath := path.Clean(p)
+		rArgs := fshash.ReadPathArgs{
+			CurDepth:    0,
+			Excludes:    excludes,
+			FPath:       cleanPath,
+			FollowLinks: arguments["--symlinks"].(bool),
+			MaxDepth:    maxDepth,
+			Parallel:    true,
+			Verbose:     isVerbose,
+		}
+		fileHashes := fshash.ReadPath(rArgs)
+		for k, v := range fileHashes {
+			globalHashMap[k] = append(globalHashMap[k], v...)
+		}
 	}
 
-	fileHashes := fshash.ReadPath(rArgs)
 	if isVerbose {
 		fmt.Printf("\nDuplicate files:\n\n")
 	}
-	for _, group := range fileHashes {
+	for _, group := range globalHashMap {
 		if len(group) > 1 {
 			for _, p := range group {
 				fmt.Println(p)
