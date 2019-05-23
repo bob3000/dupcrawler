@@ -13,7 +13,7 @@ func assertVal(t *testing.T, got interface{}, want interface{}) {
 	}
 }
 
-func assertMapEqual(t *testing.T, got map[string][]string, want map[string][]string) {
+func assertMapEqual(t *testing.T, got fshash.Map, want fshash.Map) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got '%s' want '%s'", got, want)
 	}
@@ -32,9 +32,9 @@ func TestReadPath(t *testing.T) {
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
-		want := map[string][]string{
+		want := fshash.Map{
 			"68EedPgEqj52eHjjZa2A0OBFQm8=": []string{
-				"testdata/a/a.txt", "testdata/c/d/a.txt", "testdata/b/a.txt"},
+				"testdata/a/a.txt", "testdata/b/a.txt", "testdata/c/d/a.txt", },
 			"LSuQi2CqnyqcwBxqNkbkyumeibI=": []string{"testdata/b/b.txt"},
 			"TTmnAadUv+7LU2O2oAq7FGX/+co=": []string{"testdata/c/c.txt"},
 			"YICafv5TlzimYjDtEdqN2lXFRtg=": []string{"testdata/c/d/d.txt"},
@@ -53,9 +53,9 @@ func TestReadPath(t *testing.T) {
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
-		want := map[string][]string{
+		want := fshash.Map{
 			"68EedPgEqj52eHjjZa2A0OBFQm8=": []string{
-				"testdata/a/a.txt", "testdata/c/d/a.txt", "testdata/b/a.txt"},
+				"testdata/a/a.txt", "testdata/b/a.txt", "testdata/c/d/a.txt", },
 			"LSuQi2CqnyqcwBxqNkbkyumeibI=": []string{"testdata/b/b.txt"},
 			"TTmnAadUv+7LU2O2oAq7FGX/+co=": []string{"testdata/c/c.txt"},
 			"YICafv5TlzimYjDtEdqN2lXFRtg=": []string{"testdata/c/d/d.txt"},
@@ -74,7 +74,7 @@ func TestReadPath(t *testing.T) {
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
-		want := map[string][]string{
+		want := fshash.Map{
 			"68EedPgEqj52eHjjZa2A0OBFQm8=": []string{
 				"testdata/a/a.txt", "testdata/b/a.txt"},
 			"LSuQi2CqnyqcwBxqNkbkyumeibI=": []string{"testdata/b/b.txt"},
@@ -94,7 +94,7 @@ func TestReadPath(t *testing.T) {
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
-		want := map[string][]string{
+		want := fshash.Map{
 			"68EedPgEqj52eHjjZa2A0OBFQm8=": []string{
 				"testdata/a/a.txt", "testdata/c/d/a.txt"},
 			"TTmnAadUv+7LU2O2oAq7FGX/+co=": []string{"testdata/c/c.txt"},

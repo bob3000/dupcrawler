@@ -26,7 +26,35 @@ type ReadPathArgs struct {
 	Verbose     bool
 }
 
-func readPath(a ReadPathArgs, fm *map[string][]string, wg *sync.WaitGroup,
+// Map is mapping of file hashes to a list of files
+type Map map[string]FileList
+
+// Sort sorts the FileList functioning as map values
+func (fl *Map) Sort() {
+	for _, l := range *fl {
+		sort.Sort(l)
+	}
+}
+
+// FileList is a just a list of file path list
+type FileList []string
+
+// Len returns the length of the file list
+func (fm FileList) Len() int {
+	return len(fm)
+}
+
+// Swap exchanges two values in the referenced list
+func (fm FileList) Swap(i, j int) {
+	fm[i], fm[j] = fm[j], fm[i]
+}
+
+// Less checks if i < j
+func (fm FileList) Less(i, j int) bool {
+	return fm[i] < fm[j]
+}
+
+func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 	mtx *sync.Mutex) {
 	// return early because of constraints?
 	if a.MaxDepth > 0 && a.CurDepth >= a.MaxDepth {
@@ -121,8 +149,8 @@ func readPath(a ReadPathArgs, fm *map[string][]string, wg *sync.WaitGroup,
 
 // ReadPath crawls the file system from a specified path and creates a mapping
 // SHA1 hashes to file paths
-func ReadPath(args ReadPathArgs) map[string][]string {
-	var fileHashes = make(map[string][]string)
+func ReadPath(args ReadPathArgs) Map {
+	var fileHashes = make(Map)
 	if args.Parallel {
 		var wg sync.WaitGroup
 		var mtx = sync.Mutex{}
@@ -132,6 +160,6 @@ func ReadPath(args ReadPathArgs) map[string][]string {
 	} else {
 		readPath(args, &fileHashes, nil, nil)
 	}
-	sort.Sort(fileHashes)
+	fileHashes.Sort()
 	return fileHashes
 }
