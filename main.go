@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -59,10 +60,20 @@ Options:
 		}
 	}
 
+	// sort results
+	keyHashes := make([]string, 0, len(globalHashMap))
+	for k := range globalHashMap {
+		keyHashes = append(keyHashes, k)
+	}
+	sort.Slice(keyHashes, func(i, j int) bool {
+		return keyHashes[i] < keyHashes[j]
+	})
+
 	if isVerbose {
 		fmt.Printf("\nDuplicate files:\n\n")
 	}
-	for _, group := range globalHashMap {
+	for _, h := range keyHashes {
+		group := globalHashMap[h]
 		if len(group) > 1 {
 			for _, p := range group {
 				fmt.Println(p)
