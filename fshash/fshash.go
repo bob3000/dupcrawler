@@ -14,7 +14,7 @@ import (
 )
 
 const defaultChunkSize = 256 * 1024
-const sampleRatio = 16
+const sampleRatio int64 = 16
 
 // ReadPathArgs contains arguments for the ReadPath function
 type ReadPathArgs struct {
@@ -54,6 +54,37 @@ func (fm FileList) Swap(i, j int) {
 // Less checks if i < j
 func (fm FileList) Less(i, j int) bool {
 	return fm[i] < fm[j]
+}
+
+func calcHash(f io.ReadSeeker, fstat os.FileInfo) string {
+	fSize := fstat.Size()
+	var sampleChunk int64
+	if sampleRatio > 0 && fSize > defaultChunkSize {
+		sampleChunk = fSize / sampleRatio
+	} else {
+		sampleChunk = defaultChunkSize
+	}
+	fChunk := make([]byte, sampleChunk)
+	var hash [sha1.Size]byte
+	hashComponents := make([]byte, len(hash)+len(fChunk))
+	hashStr := ""
+	for {
+		_, err := f.Read(fChunk)
+		if err == io.EOF {
+			break
+		}
+		copy(hashComponents, hashStr)
+		copy(hashComponents[len(hashStr):], fChunk)
+		hash = sha1.Sum(hashComponents)
+		hashStr = base64.StdEncoding.EncodeToString(hash[:])
+		if sampleRatio > 0 {
+			_, err := f.Seek(sampleChunk*(sampleRatio-1), 1)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	return hashStr
 }
 
 func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
@@ -124,34 +155,7 @@ func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 		return
 	}
 
-	// calculate hash and save it to fileHashes
-	fSize := fstat.Size()
-	var sampleChunk int64
-	if a.Sample && fSize > defaultChunkSize {
-		sampleChunk = fSize / sampleRatio
-	} else {
-		sampleChunk = defaultChunkSize
-	}
-	fChunk := make([]byte, sampleChunk)
-	var hash [sha1.Size]byte
-	hashComponents := make([]byte, len(hash)+len(fChunk))
-	hashStr := ""
-	for {
-		_, err = f.Read(fChunk)
-		if err == io.EOF {
-			break
-		}
-		copy(hashComponents, hashStr)
-		copy(hashComponents[len(hashStr):], fChunk)
-		hash = sha1.Sum(hashComponents)
-		hashStr = base64.StdEncoding.EncodeToString(hash[:])
-		if a.Sample {
-			_, err := f.Seek(sampleChunk*(sampleRatio-1), 1)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
+	hashStr := calcHash(f, fstat)
 	if a.Parallel {
 		mtx.Lock()
 		(*fm)[hashStr] = append((*fm)[hashStr], a.FPath)
