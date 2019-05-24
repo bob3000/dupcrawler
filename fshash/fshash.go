@@ -13,7 +13,8 @@ import (
 	"sync"
 )
 
-const chunkSizeKB = 256
+const defaultChunkSize = 256 * 1024
+const sampleRatio = 16
 
 // ReadPathArgs contains arguments for the ReadPath function
 type ReadPathArgs struct {
@@ -23,6 +24,7 @@ type ReadPathArgs struct {
 	FollowLinks bool
 	MaxDepth    int
 	Parallel    bool
+	Sample      bool
 	Verbose     bool
 }
 
@@ -123,8 +125,14 @@ func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 	}
 
 	// calculate hash and save it to fileHashes
-	chunkSize := chunkSizeKB * 1024
-	fChunk := make([]byte, chunkSize)
+	fSize := fstat.Size()
+	var sampleChunk int64
+	if a.Sample && fSize > defaultChunkSize {
+		sampleChunk = fSize / sampleRatio
+	} else {
+		sampleChunk = defaultChunkSize
+	}
+	fChunk := make([]byte, sampleChunk)
 	var hash [sha1.Size]byte
 	hashComponents := make([]byte, len(hash)+len(fChunk))
 	hashStr := ""
@@ -137,6 +145,12 @@ func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 		copy(hashComponents[len(hashStr):], fChunk)
 		hash = sha1.Sum(hashComponents)
 		hashStr = base64.StdEncoding.EncodeToString(hash[:])
+		if a.Sample {
+			_, err := f.Seek(sampleChunk*(sampleRatio-1), 1)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 	}
 	if a.Parallel {
 		mtx.Lock()

@@ -23,6 +23,7 @@ func TestReadPath(t *testing.T) {
 			MaxDepth:    0,
 			Excludes:    []string{},
 			Parallel:    false,
+			Sample:      false,
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
@@ -44,6 +45,29 @@ func TestReadPath(t *testing.T) {
 			MaxDepth:    0,
 			Excludes:    []string{},
 			Parallel:    true,
+			Sample:      false,
+			Verbose:     false,
+		}
+		got := fshash.ReadPath(args)
+		want := fshash.Map{
+			"68EedPgEqj52eHjjZa2A0OBFQm8=": []string{
+				"testdata/a/a.txt", "testdata/b/a.txt", "testdata/c/d/a.txt", },
+			"LSuQi2CqnyqcwBxqNkbkyumeibI=": []string{"testdata/b/b.txt"},
+			"TTmnAadUv+7LU2O2oAq7FGX/+co=": []string{"testdata/c/c.txt"},
+			"YICafv5TlzimYjDtEdqN2lXFRtg=": []string{"testdata/c/d/d.txt"},
+		}
+		assertMapEqual(t, got, want)
+	})
+
+	t.Run("Read path sampled", func(t *testing.T) {
+		args := fshash.ReadPathArgs{
+			FPath:       "testdata",
+			FollowLinks: false,
+			CurDepth:    0,
+			MaxDepth:    0,
+			Excludes:    []string{},
+			Parallel:    false,
+			Sample:      true,
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
@@ -65,6 +89,7 @@ func TestReadPath(t *testing.T) {
 			MaxDepth:    3,
 			Excludes:    []string{},
 			Parallel:    false,
+			Sample:      false,
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
@@ -85,6 +110,7 @@ func TestReadPath(t *testing.T) {
 			MaxDepth:    0,
 			Excludes:    []string{"testdata/b"},
 			Parallel:    false,
+			Sample:      false,
 			Verbose:     false,
 		}
 		got := fshash.ReadPath(args)
@@ -109,6 +135,7 @@ func BenchmarkReadPath(b *testing.B) {
 			MaxDepth:    0,
 			Excludes:    []string{},
 			Parallel:    false,
+			Sample:      false,
 			Verbose:     false,
 		}
 		fshash.ReadPath(args)
@@ -124,6 +151,39 @@ func BenchmarkReadPath(b *testing.B) {
 			MaxDepth:    0,
 			Excludes:    []string{},
 			Parallel:    true,
+			Sample:      false,
+			Verbose:     false,
+		}
+		fshash.ReadPath(args)
+	})
+
+	b.Run("benchmark sequential sampled", func(b *testing.B) {
+		args := fshash.ReadPathArgs{
+			// you might want to change FPath to a larger data set for real
+			// benchmarking
+			FPath:       "testdata",
+			FollowLinks: false,
+			CurDepth:    0,
+			MaxDepth:    0,
+			Excludes:    []string{},
+			Parallel:    false,
+			Sample:      true,
+			Verbose:     false,
+		}
+		fshash.ReadPath(args)
+	})
+
+	b.Run("benchmark parallel sampled", func(b *testing.B) {
+		args := fshash.ReadPathArgs{
+			// you might want to change FPath to a larger data set for real
+			// benchmarking
+			FPath:       "testdata",
+			FollowLinks: false,
+			CurDepth:    0,
+			MaxDepth:    0,
+			Excludes:    []string{},
+			Parallel:    true,
+			Sample:      true,
 			Verbose:     false,
 		}
 		fshash.ReadPath(args)

@@ -25,9 +25,10 @@ Options:
   -e, --excludes=<paths>  Comma separated list of path to exclude [default: ""]
   -d, --depth=<i>         Set maximum file hierarchy depth [default: 0]
   -l, --symlinks          Follow symlinks
-  -h --help               Show this screen
+  -h, --help              Show this screen
   -v, --verbose           Show whats being done
-  --no-parallel			  Disable parallel directory processing
+  --no-parallel           Disable parallel directory processing
+  --no-sample	          Calculate checksum over the entire file
   --version               Show version`
 
 	arguments, _ := docopt.ParseArgs(usage, os.Args[1:], VERSION)
@@ -49,6 +50,7 @@ Options:
 			FollowLinks: arguments["--symlinks"].(bool),
 			MaxDepth:    maxDepth,
 			Parallel:    !arguments["--no-parallel"].(bool),
+			Sample:      !arguments["--no-sample"].(bool),
 			Verbose:     isVerbose,
 		}
 		fileHashes := fshash.ReadPath(rArgs)
