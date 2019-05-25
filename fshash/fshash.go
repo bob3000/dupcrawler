@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 
 const defaultChunkSize = 256 * 1024
 const sampleRatio int64 = 16
+const cpuMultiplicator = 8
 
 // ReadPathArgs contains arguments for the ReadPath function
 type ReadPathArgs struct {
@@ -182,7 +184,7 @@ func readPath(a ReadPathArgs, li *[]string, wg *sync.WaitGroup,
 // SHA1 hashes to file paths
 func ReadPath(args ReadPathArgs) Map {
 	if args.Verbose {
-		fmt.Println("Reading file tree ...")
+		fmt.Print("Reading file tree ...\n\n")
 	}
 	fileList := make([]string, 0, 100)
 	if args.Parallel {
@@ -204,9 +206,13 @@ func ReadPath(args ReadPathArgs) Map {
 		fmt.Println("\nCalculating file hashes ...")
 		progressBar.Start()
 	}
+
+	maxGoRoutines := runtime.NumCPU() * cpuMultiplicator
+	numGoRoutines := 0
 	for _, s := range fileList {
 		if args.Parallel {
 			wg.Add(1)
+			numGoRoutines++
 			go func(fpath string) {
 				hashStr := calcHash(fpath, &wg)
 				mtx.Lock()
@@ -216,6 +222,9 @@ func ReadPath(args ReadPathArgs) Map {
 					progressBar.Increment()
 				}
 			}(s)
+			if numGoRoutines >= maxGoRoutines {
+				wg.Wait()
+			}
 		} else {
 			hashStr := calcHash(s, nil)
 			fileHashes[hashStr] = append(fileHashes[hashStr], s)
