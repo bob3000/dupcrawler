@@ -56,7 +56,21 @@ func (fm FileList) Less(i, j int) bool {
 	return fm[i] < fm[j]
 }
 
-func calcHash(f io.ReadSeeker, fstat os.FileInfo) string {
+func calcHash(fpath string, wg *sync.WaitGroup) string {
+	f, err := os.Open(fpath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		f.Close()
+		if wg != nil {
+			wg.Done()
+		}
+	}()
+	fstat, err := os.Stat(fpath)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fSize := fstat.Size()
 	var sampleChunk int64
 	if sampleRatio > 0 && fSize > defaultChunkSize {
@@ -87,7 +101,7 @@ func calcHash(f io.ReadSeeker, fstat os.FileInfo) string {
 	return hashStr
 }
 
-func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
+func readPath(a ReadPathArgs, li *[]string, wg *sync.WaitGroup,
 	mtx *sync.Mutex) {
 	// return early because of constraints?
 	if a.MaxDepth > 0 && a.CurDepth >= a.MaxDepth {
@@ -98,7 +112,6 @@ func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 			return
 		}
 	}
-
 	// begin file examination
 	fstat, err := os.Stat(a.FPath)
 	if err != nil {
@@ -115,12 +128,14 @@ func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 		}
 		if a.Parallel {
 			wg.Add(1)
-			go readPath(args, fm, wg, mtx)
+			go readPath(args, li, wg, mtx)
 		} else {
-			readPath(args, fm, wg, mtx)
+			readPath(args, li, wg, mtx)
 		}
 		return
 	}
+
+	// if it's a directory, call func recursively
 	f, err := os.Open(a.FPath)
 	if err != nil {
 		log.Fatal(err)
@@ -131,8 +146,6 @@ func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 			wg.Done()
 		}
 	}()
-
-	// if it's a directory, call func recursively
 	if fstat.IsDir() {
 		if a.Verbose {
 			fmt.Printf("Examining %s ...\n", a.FPath)
@@ -147,36 +160,55 @@ func readPath(a ReadPathArgs, fm *Map, wg *sync.WaitGroup,
 			args.CurDepth = a.CurDepth + 1
 			if a.Parallel {
 				wg.Add(1)
-				go readPath(args, fm, wg, mtx)
+				go readPath(args, li, wg, mtx)
 			} else {
-				readPath(args, fm, wg, mtx)
+				readPath(args, li, wg, mtx)
 			}
 		}
 		return
 	}
-
-	hashStr := calcHash(f, fstat)
 	if a.Parallel {
 		mtx.Lock()
-		(*fm)[hashStr] = append((*fm)[hashStr], a.FPath)
+		*li = append(*li, a.FPath)
 		mtx.Unlock()
 	} else {
-		(*fm)[hashStr] = append((*fm)[hashStr], a.FPath)
+		*li = append(*li, a.FPath)
 	}
 }
 
 // ReadPath crawls the file system from a specified path and creates a mapping
 // SHA1 hashes to file paths
 func ReadPath(args ReadPathArgs) Map {
-	var fileHashes = make(Map)
+	fileList := make([]string, 0, 100)
 	if args.Parallel {
 		var wg sync.WaitGroup
 		var mtx = sync.Mutex{}
 		wg.Add(1)
-		readPath(args, &fileHashes, &wg, &mtx)
+		readPath(args, &fileList, &wg, &mtx)
 		wg.Wait()
 	} else {
-		readPath(args, &fileHashes, nil, nil)
+		readPath(args, &fileList, nil, nil)
+	}
+
+	var fileHashes = make(Map)
+	var wg sync.WaitGroup
+	var mtx = sync.Mutex{}
+	for _, s := range fileList {
+		if args.Parallel {
+			wg.Add(1)
+			go func(fpath string) {
+				hashStr := calcHash(fpath, &wg)
+				mtx.Lock()
+				fileHashes[hashStr] = append(fileHashes[hashStr], fpath)
+				mtx.Unlock()
+			}(s)
+		} else {
+			hashStr := calcHash(s, nil)
+			fileHashes[hashStr] = append(fileHashes[hashStr], s)
+		}
+	}
+	if args.Parallel {
+		wg.Wait()
 	}
 	fileHashes.Sort()
 	return fileHashes
