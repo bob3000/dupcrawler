@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 const defaultChunkSize = 256 * 1024
@@ -179,6 +181,9 @@ func readPath(a ReadPathArgs, li *[]string, wg *sync.WaitGroup,
 // ReadPath crawls the file system from a specified path and creates a mapping
 // SHA1 hashes to file paths
 func ReadPath(args ReadPathArgs) Map {
+	if args.Verbose {
+		fmt.Println("Reading file tree ...")
+	}
 	fileList := make([]string, 0, 100)
 	if args.Parallel {
 		var wg sync.WaitGroup
@@ -193,6 +198,12 @@ func ReadPath(args ReadPathArgs) Map {
 	var fileHashes = make(Map)
 	var wg sync.WaitGroup
 	var mtx = sync.Mutex{}
+	progressBar := pb.New(len(fileList))
+	progressBar.SetMaxWidth(80)
+	if args.Verbose {
+		fmt.Println("\nCalculating file hashes ...")
+		progressBar.Start()
+	}
 	for _, s := range fileList {
 		if args.Parallel {
 			wg.Add(1)
@@ -201,15 +212,22 @@ func ReadPath(args ReadPathArgs) Map {
 				mtx.Lock()
 				fileHashes[hashStr] = append(fileHashes[hashStr], fpath)
 				mtx.Unlock()
+				if args.Verbose {
+					progressBar.Increment()
+				}
 			}(s)
 		} else {
 			hashStr := calcHash(s, nil)
 			fileHashes[hashStr] = append(fileHashes[hashStr], s)
+			if args.Verbose {
+				progressBar.Increment()
+			}
 		}
 	}
 	if args.Parallel {
 		wg.Wait()
 	}
+	progressBar.FinishPrint("Done")
 	fileHashes.Sort()
 	return fileHashes
 }
