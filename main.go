@@ -23,13 +23,13 @@ Usage:
   dupcrawler [options] <inputdir>...
 
 Options:
-  -e, --excludes=<paths>  Comma separated list of path to exclude [default: ""]
+  -e, --excludes=<paths>  Comma separated list of paths to exclude [default: ""]
   -d, --depth=<i>         Set maximum file hierarchy depth [default: 0]
   -l, --symlinks          Follow symlinks
   -h, --help              Show this screen
-  -v, --verbose           Show whats being done
-  --no-parallel           Disable parallel directory processing
-  --no-sample	          Calculate checksum over the entire file
+  -v, --verbose           Show what's being done
+  --no-parallel           Disable parallel processing
+  --no-sample             Calculate checksum over the entire file
   --version               Show version`
 
 	arguments, _ := docopt.ParseArgs(usage, os.Args[1:], VERSION)
